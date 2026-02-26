@@ -1,79 +1,41 @@
 name: Feedback prompt for non-Docs team contributors when a PR is closed
-
 on:
-  pull_request:
-    types: [closed]
-
+  workflow_dispatch: {}
 permissions:
   contents: read
   pull-requests: write
-
 jobs:
   comment-on-pr:
-    # This workflow should only run on the 'github/docs-internal' repository because it posts a feedback request
-    # to non-Docs team contributors when their PR is merged into the main branch.
-    # The feedback request asks contributors to leave feedback on their contributing experience in Slack.
-    if: github.repository == 'github/docs-internal' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
-
+    if: github.repository == 'github/docs-internal' && github.event.pull_request.merged
+      == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check if PR author is in docs-content team
-        id: check_team
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
-        with:
-          github-token: ${{ secrets.DOCS_BOT_PAT_BASE }}
-          script: |
-            try {
-              const pr = context.payload.pull_request;
-              await github.rest.teams.getMembershipForUserInOrg({
-                org: 'github',
-                team_slug: 'docs-content',
-                username: pr.user.login,
-              });
-              // Author is in the team. Do nothing!
-            } catch(err) {
-              // Author not in team
-              core.exportVariable('NON_DOCS_HUBBER', 'true');
-            }
-
-      - name: Post changelog instructions comment
-
-        if: env.NON_DOCS_HUBBER == 'true'
-
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
-        with:
-          github-token: ${{ secrets.DOCS_BOT_PAT_BASE }}
-          script: |
-            const pr = context.payload.pull_request;
-            const prAuthor = pr.user.login;
-            const assignees = (pr.assignees ?? [])
-              .filter(a => a.login.toLowerCase() !== "copilot")
-              .map(a => "@" + a.login)
-              .join(" ");
-
-            let commentBody;
-
-            if (assignees) {
-              commentBody =
-                "👋 " + assignees +
-                " - Please leave us feedback on your contributing experience! " +
-                "To do this, please go to `#docs-contributor-feedback` on Slack.";
-            } else if (prAuthor.toLowerCase() !== "copilot") {
-              commentBody =
-                "👋 @" + prAuthor +
-                " - Please leave us feedback on your contributing experience! " +
-                "To do this, please go to `#docs-contributor-feedback` on Slack.";
-            } else {
-              // nobody to mention!
-              commentBody =
-                "👋 Please leave us feedback on your contributing experience! " +
-                "To do this, please go to `#docs-contributor-feedback` on Slack.";
-            }
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-              body: commentBody
-            });
+    - name: Check if PR author is in docs-content team
+      id: check_team
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+      with:
+        github-token: ${{ secrets.DOCS_BOT_PAT_BASE }}
+        script: "try {\n  const pr = context.payload.pull_request;\n  await github.rest.teams.getMembershipForUserInOrg({\n\
+          \    org: 'github',\n    team_slug: 'docs-content',\n    username: pr.user.login,\n\
+          \  });\n  // Author is in the team. Do nothing!\n} catch(err) {\n  // Author\
+          \ not in team\n  core.exportVariable('NON_DOCS_HUBBER', 'true');\n}\n"
+    - name: Post changelog instructions comment
+      if: env.NON_DOCS_HUBBER == 'true'
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+      with:
+        github-token: ${{ secrets.DOCS_BOT_PAT_BASE }}
+        script: "const pr = context.payload.pull_request;\nconst prAuthor = pr.user.login;\n\
+          const assignees = (pr.assignees ?? [])\n  .filter(a => a.login.toLowerCase()\
+          \ !== \"copilot\")\n  .map(a => \"@\" + a.login)\n  .join(\" \");\n\nlet\
+          \ commentBody;\n\nif (assignees) {\n  commentBody =\n    \"\U0001F44B \"\
+          \ + assignees +\n    \" - Please leave us feedback on your contributing\
+          \ experience! \" +\n    \"To do this, please go to `#docs-contributor-feedback`\
+          \ on Slack.\";\n} else if (prAuthor.toLowerCase() !== \"copilot\") {\n \
+          \ commentBody =\n    \"\U0001F44B @\" + prAuthor +\n    \" - Please leave\
+          \ us feedback on your contributing experience! \" +\n    \"To do this, please\
+          \ go to `#docs-contributor-feedback` on Slack.\";\n} else {\n  // nobody\
+          \ to mention!\n  commentBody =\n    \"\U0001F44B Please leave us feedback\
+          \ on your contributing experience! \" +\n    \"To do this, please go to\
+          \ `#docs-contributor-feedback` on Slack.\";\n}\n\nawait github.rest.issues.createComment({\n\
+          \  owner: context.repo.owner,\n  repo: context.repo.repo,\n  issue_number:\
+          \ pr.number,\n  body: commentBody\n});\n"
