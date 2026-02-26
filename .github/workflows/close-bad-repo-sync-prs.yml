@@ -1,63 +1,30 @@
 name: Close bad repo-sync PRs
-
-# **What it does**:
-#   Closes and PR from `repo-sync` to `main` that wasn't created by a Hubber.
-# **Why we have it**:
-#   Unfortunately, a lot of PRs in github/docs are created by people who
-#   shouldn't be creating such PRs. We bot our bots to own it.
-# **Who does it impact**: Open-source.
-
 on:
-  # Necessary in lieu of `pull_request` so that PRs opened from forks can be closed if they try to push to a repo sync branch.
-  pull_request_target:
-
+  workflow_dispatch: {}
 permissions:
   contents: write
   pull-requests: write
-
 jobs:
   close-invalid-repo-sync-pr:
-    if: ${{ github.repository == 'github/docs' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'repo-sync' }}
+    if: ${{ github.repository == 'github/docs' && github.event.pull_request.base.ref
+      == 'main' && github.event.pull_request.head.ref == 'repo-sync' }}
     name: Close if invalid repo-sync PR author
     runs-on: ubuntu-latest
     steps:
-      - name: Close pull request if unwanted
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
-        with:
-          github-token: ${{ secrets.DOCS_BOT_PAT_BASE }}
-          script: |
-            const { owner, repo } = context.repo
-            const prCreator = context.actor
-            const prNumber = context.issue.number
-
-            try {
-              await github.rest.teams.getMembershipForUserInOrg({
-                org: 'github',
-                team_slug: 'employees',
-                username: prCreator
-              })
-
-              // If the PR creator is a GitHub employee, stop now
-              console.log("PR creator is a GitHub employee")
-              return
-            } catch (err) {
-              // An error will be thrown if the user is not a GitHub employee.
-              // That said, we still want to proceed anyway!
-            }
-
-            // Close the PR and add the invalid label
-            await github.rest.issues.update({
-              owner,
-              repo,
-              issue_number: prNumber,
-              labels: ['invalid'],
-              state: 'closed'
-            })
-
-            // Comment on the PR
-            await github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number: prNumber,
-              body: "Please leave this `repo-sync` branch to the robots!\n\nI'm going to close this pull request now, but feel free to open a new issue in the repository!"
-            })
+    - name: Close pull request if unwanted
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+      with:
+        github-token: ${{ secrets.DOCS_BOT_PAT_BASE }}
+        script: "const { owner, repo } = context.repo\nconst prCreator = context.actor\n\
+          const prNumber = context.issue.number\n\ntry {\n  await github.rest.teams.getMembershipForUserInOrg({\n\
+          \    org: 'github',\n    team_slug: 'employees',\n    username: prCreator\n\
+          \  })\n\n  // If the PR creator is a GitHub employee, stop now\n  console.log(\"\
+          PR creator is a GitHub employee\")\n  return\n} catch (err) {\n  // An error\
+          \ will be thrown if the user is not a GitHub employee.\n  // That said,\
+          \ we still want to proceed anyway!\n}\n\n// Close the PR and add the invalid\
+          \ label\nawait github.rest.issues.update({\n  owner,\n  repo,\n  issue_number:\
+          \ prNumber,\n  labels: ['invalid'],\n  state: 'closed'\n})\n\n// Comment\
+          \ on the PR\nawait github.rest.issues.createComment({\n  owner,\n  repo,\n\
+          \  issue_number: prNumber,\n  body: \"Please leave this `repo-sync` branch\
+          \ to the robots!\\n\\nI'm going to close this pull request now, but feel\
+          \ free to open a new issue in the repository!\"\n})\n"
