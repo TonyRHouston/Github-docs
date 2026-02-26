@@ -1,58 +1,30 @@
 name: Create SME review tracking issue
-
-# **What it does**: Creates an SME review tracking issue when the `needs SME` label is applied to a PR or issue
-# **Why we have it**: We do not want to manually create an SME review tracking issue when an SME review is needed
-# **Who does it impact**: Hubbers
-
 on:
-  issues:
-    types:
-      - labeled
-  # Required in lieu of `pull_request` so that this workflow can query users in org to determine membership.
-  pull_request_target:
-    types:
-      - labeled
-
+  workflow_dispatch: {}
 permissions:
   contents: read
-
 jobs:
   create-sme-review-tracking-issue:
     runs-on: ubuntu-latest
     if: github.repository == 'github/docs' && github.event.label.name == 'needs SME'
     steps:
-      - id: create-issue
-        env:
-          URL: ${{ github.event.pull_request.html_url || github.event.issue.html_url }}
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
-        with:
-          github-token: ${{ secrets.DOCS_BOT_PAT_BASE }}
-          script: |-
-
-            const issueNo = context.number || context.issue.number
-
-            // Create an issue in docs-team repo
-            await github.rest.issues.create({
-              owner: 'github',
-              repo: 'docs-team',
-              title: `SME tracking issue for \#${issueNo}`,
-              body: `### Issue / PR that requires an SME review
-
-            ${process.env.URL}
-
-            ### Reason for SME review
-
-            @${context.payload.sender.login} (Optional) _Insert short answer regarding why SME assistance is required to review this contribution_
-
-            ### Location SME review was requested
-
-            _Insert link to the location SME review was initially requested_
-
-            #### In the comments below, include notes regarding SME review progress (examples) -
-
-            - Routed to another channel / team
-            - Reviewer stating they'll need to get back to us at a later time
-            - Review provided was unclear or missing key information, and a follow-up is necessary
-            `,
-              labels: ['on track','open source', 'sme-review', 'workflow-generated'],
-            });
+    - id: create-issue
+      env:
+        URL: ${{ github.event.pull_request.html_url || github.event.issue.html_url
+          }}
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+      with:
+        github-token: ${{ secrets.DOCS_BOT_PAT_BASE }}
+        script: "\nconst issueNo = context.number || context.issue.number\n\n// Create\
+          \ an issue in docs-team repo\nawait github.rest.issues.create({\n  owner:\
+          \ 'github',\n  repo: 'docs-team',\n  title: `SME tracking issue for \\#${issueNo}`,\n\
+          \  body: `### Issue / PR that requires an SME review\n\n${process.env.URL}\n\
+          \n### Reason for SME review\n\n@${context.payload.sender.login} (Optional)\
+          \ _Insert short answer regarding why SME assistance is required to review\
+          \ this contribution_\n\n### Location SME review was requested\n\n_Insert\
+          \ link to the location SME review was initially requested_\n\n#### In the\
+          \ comments below, include notes regarding SME review progress (examples)\
+          \ -\n\n- Routed to another channel / team\n- Reviewer stating they'll need\
+          \ to get back to us at a later time\n- Review provided was unclear or missing\
+          \ key information, and a follow-up is necessary\n`,\n  labels: ['on track','open\
+          \ source', 'sme-review', 'workflow-generated'],\n});"
