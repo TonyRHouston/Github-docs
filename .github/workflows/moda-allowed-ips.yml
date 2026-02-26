@@ -1,60 +1,33 @@
 name: Update Moda allowed IPs
-
-# **What it does**: Make sure that the allowed IPs in Moda are up to date.
-# **Why we have it**: The IP ranges from Fastly can change.
-# **Who does it impact**: Docs engineering.
-
 on:
-  schedule:
-    - cron: '20 16 * * 4' # Run every Thursday at 16:20 UTC / 8:20 PST
-  workflow_dispatch:
-
+  workflow_dispatch: {}
 permissions:
   contents: write
   pull-requests: write
-
 jobs:
   update-moda-allowed-ips:
     if: github.repository == 'github/docs-internal'
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v6.0.1
-
-      - name: Update list of allowed IPs
-        run: |
-          echo "Getting a list of Fastly IP addresses...."
-          ips=$( \
-            curl -s https://api.fastly.com/public-ip-list \
-            | jq -r '.addresses | join(",")' \
-          )
-          echo "Got a list of Fastly IP addresses: $ips"
-
-          echo "Updating the list of allowed IPs in Moda config..."
-          yq -i ".metadata.annotations[\"moda.github.net/allowed-ips\"] = \"$ips\"" \
-            config/kubernetes/production/services/webapp.yaml
-          echo "Updated the list of allowed IPs in Moda config"
-
-          echo "Checking if there is a change to make..."
-          if git diff --quiet; then
-            echo "No changes to the allowed IPs"
-            exit 0
-          fi
-
-          echo "Change found; making a pull request..."
-          branchname=update-allowed-ips-$(date +%s)
-          git checkout -b $branchname
-          git commit -am "Update list of allowed IPs"
-          git push
-          gh pr create \
-            --title "Update list of allowed IPs" \
-            --body 'This PR updates the list of allowed IPs in Moda. It is automatically generated.' \
-            --label "workflow-generated" \
-            --head=$branchname
-          echo "Pull request created"
-
-      - uses: ./.github/actions/slack-alert
-        if: ${{ failure() }}
-        with:
-          slack_channel_id: ${{ secrets.DOCS_ALERTS_SLACK_CHANNEL_ID }}
-          slack_token: ${{ secrets.SLACK_DOCS_BOT_TOKEN }}
+    - name: Check out the repository
+      uses: actions/checkout@v6.0.1
+    - name: Update list of allowed IPs
+      run: "echo \"Getting a list of Fastly IP addresses....\"\nips=$( \\\n  curl\
+        \ -s https://api.fastly.com/public-ip-list \\\n  | jq -r '.addresses | join(\"\
+        ,\")' \\\n)\necho \"Got a list of Fastly IP addresses: $ips\"\n\necho \"Updating\
+        \ the list of allowed IPs in Moda config...\"\nyq -i \".metadata.annotations[\\\
+        \"moda.github.net/allowed-ips\\\"] = \\\"$ips\\\"\" \\\n  config/kubernetes/production/services/webapp.yaml\n\
+        echo \"Updated the list of allowed IPs in Moda config\"\n\necho \"Checking\
+        \ if there is a change to make...\"\nif git diff --quiet; then\n  echo \"\
+        No changes to the allowed IPs\"\n  exit 0\nfi\n\necho \"Change found; making\
+        \ a pull request...\"\nbranchname=update-allowed-ips-$(date +%s)\ngit checkout\
+        \ -b $branchname\ngit commit -am \"Update list of allowed IPs\"\ngit push\n\
+        gh pr create \\\n  --title \"Update list of allowed IPs\" \\\n  --body 'This\
+        \ PR updates the list of allowed IPs in Moda. It is automatically generated.'\
+        \ \\\n  --label \"workflow-generated\" \\\n  --head=$branchname\necho \"Pull\
+        \ request created\"\n"
+    - uses: ./.github/actions/slack-alert
+      if: ${{ failure() }}
+      with:
+        slack_channel_id: ${{ secrets.DOCS_ALERTS_SLACK_CHANNEL_ID }}
+        slack_token: ${{ secrets.SLACK_DOCS_BOT_TOKEN }}
